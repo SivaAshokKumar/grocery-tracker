@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  grocery-tracker:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./credentials.json:/app/credentials.json:ro
+    environment:
+      - FLASK_ENV=production
+    restart: unless-stopped
