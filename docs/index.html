@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grocery Shop Tracker</title>
+    <title>Grocery Shop Tracker - Data Entry</title>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -117,31 +119,15 @@
             display: block;
             border: 1px solid #f1b0b7;
         }
-        .info-box {
-            margin-top: 20px;
-            padding: 16px;
-            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-            border-radius: 12px;
-            font-size: 12px;
-            color: #1565c0;
+        .nav-links {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .nav-links a {
+            flex: 1;
             text-align: center;
-            border: 1px solid #90caf9;
-        }
-        .info-box strong {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 13px;
-        }
-        .info-box small {
-            display: block;
-            margin-top: 8px;
-            opacity: 0.8;
-        }
-        .view-data-btn {
-            display: block;
-            text-align: center;
-            margin-top: 15px;
-            padding: 12px;
+            padding: 10px;
             background: white;
             color: #667eea;
             text-decoration: none;
@@ -151,9 +137,40 @@
             border: 2px solid #667eea;
             transition: all 0.3s ease;
         }
-        .view-data-btn:hover {
+        .nav-links a:hover, .nav-links a.active {
             background: #667eea;
             color: white;
+        }
+        .config-section {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .config-section label {
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        .config-section input {
+            font-size: 12px;
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+        .config-section small {
+            color: #666;
+            font-size: 11px;
+            display: block;
+        }
+        .save-config-btn {
+            width: 100%;
+            padding: 8px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 5px;
         }
         
         /* Mobile Responsive */
@@ -173,7 +190,7 @@
             }
             input[type="text"], input[type="number"] {
                 padding: 12px 14px;
-                font-size: 16px; /* Prevents zoom on iOS */
+                font-size: 16px;
             }
             button {
                 padding: 14px;
@@ -187,7 +204,21 @@
         <h1>🛒 Grocery Shop Tracker</h1>
         <p class="subtitle">Sales & Expense Management System</p>
         
-        <form id="trackerForm" action="https://script.google.com/macros/s/AKfycbzQSJgWuPlvYQAf9EMX-TtZqz9dk94YBSnse6PhnW3gktVL7XFyhJy-KEoysb3DsqkL/exec" method="POST">
+        <div class="nav-links">
+            <a href="index.html" class="active">📥 Entry</a>
+            <a href="viewer.html">📊 View Data</a>
+        </div>
+        
+        <div class="config-section" id="configSection">
+            <label>Supabase URL</label>
+            <input type="text" id="supabaseUrl" placeholder="https://xxxxxx.supabase.co">
+            <label>Supabase Anon Key</label>
+            <input type="password" id="supabaseKey" placeholder="eyJ...">
+            <small>⚙️ These are saved locally in your browser</small>
+            <button class="save-config-btn" onclick="saveConfig()">💾 Save Configuration</button>
+        </div>
+        
+        <form id="trackerForm">
             <div class="form-group">
                 <label for="sale_amount">Sale Amount <span class="optional">(optional)</span></label>
                 <input type="number" id="sale_amount" name="sale_amount" step="0.01" placeholder="Enter sale amount">
@@ -203,43 +234,94 @@
                 <input type="number" id="expense_amount" name="expense_amount" step="0.01" placeholder="Enter expense amount">
             </div>
             
-            <button type="submit" id="submitBtn">💾 Save to Google Sheets</button>
+            <button type="submit" id="submitBtn">💾 Save Transaction</button>
         </form>
         
         <div id="message" class="message"></div>
-        
-        <div class="info-box">
-            <strong>📊 Where to find your data</strong>
-            All entries are saved to your Google Sheets<br>
-            Look for "Grocery Tracker" spreadsheet
-            <small>All fields are optional - fill any combination</small>
-        </div>
-        <a href="https://docs.google.com/spreadsheets" target="_blank" class="view-data-btn">Open Google Sheets</a>
     </div>
 
     <script>
-        // Check for success/error from URL parameters (after form submission redirects back)
-        const urlParams = new URLSearchParams(window.location.search);
-        const messageDiv = document.getElementById('message');
+        // Load saved configuration
+        document.getElementById('supabaseUrl').value = localStorage.getItem('supabase_url') || '';
+        document.getElementById('supabaseKey').value = localStorage.getItem('supabase_key') || '';
         
-        if (urlParams.get('success') === 'true') {
-            messageDiv.className = 'message success';
-            messageDiv.textContent = '✅ Data saved successfully to Google Sheets!';
-            // Clear URL parameters
-            window.history.replaceState({}, document.title, window.location.pathname);
-            // Clear form
-            document.getElementById('trackerForm').reset();
-        } else if (urlParams.get('error')) {
-            messageDiv.className = 'message error';
-            messageDiv.textContent = '❌ Error: ' + decodeURIComponent(urlParams.get('error'));
-            window.history.replaceState({}, document.title, window.location.pathname);
+        // Hide config if already saved
+        if (localStorage.getItem('supabase_url') && localStorage.getItem('supabase_key')) {
+            document.getElementById('configSection').style.display = 'none';
         }
         
-        // Show loading state on form submit
-        document.getElementById('trackerForm').addEventListener('submit', function() {
+        function saveConfig() {
+            const url = document.getElementById('supabaseUrl').value.trim();
+            const key = document.getElementById('supabaseKey').value.trim();
+            
+            if (!url || !key) {
+                alert('Please enter both Supabase URL and Key');
+                return;
+            }
+            
+            localStorage.setItem('supabase_url', url);
+            localStorage.setItem('supabase_key', key);
+            document.getElementById('configSection').style.display = 'none';
+            showMessage('✅ Configuration saved!', 'success');
+        }
+        
+        function showMessage(text, type) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.className = 'message ' + type;
+            msgDiv.textContent = text;
+            setTimeout(() => {
+                msgDiv.className = 'message';
+                msgDiv.textContent = '';
+            }, 5000);
+        }
+        
+        document.getElementById('trackerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
             const submitBtn = document.getElementById('submitBtn');
+            const supabaseUrl = localStorage.getItem('supabase_url');
+            const supabaseKey = localStorage.getItem('supabase_key');
+            
+            if (!supabaseUrl || !supabaseKey) {
+                document.getElementById('configSection').style.display = 'block';
+                showMessage('⚠️ Please configure Supabase first', 'error');
+                return;
+            }
+            
             submitBtn.disabled = true;
-            submitBtn.textContent = '⏳ Saving... Please wait';
+            submitBtn.textContent = '⏳ Saving...';
+            
+            const data = {
+                sale_amount: document.getElementById('sale_amount').value || null,
+                expense_name: document.getElementById('expense_name').value || null,
+                expense_amount: document.getElementById('expense_amount').value || null
+            };
+            
+            try {
+                const response = await fetch(`${supabaseUrl}/rest/v1/transactions`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': supabaseKey,
+                        'Authorization': `Bearer ${supabaseKey}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    showMessage('✅ Transaction saved successfully!', 'success');
+                    document.getElementById('trackerForm').reset();
+                } else {
+                    const error = await response.text();
+                    showMessage('❌ Error: ' + error, 'error');
+                }
+            } catch (error) {
+                showMessage('❌ Error: ' + error.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '💾 Save Transaction';
+            }
         });
     </script>
 </body>
