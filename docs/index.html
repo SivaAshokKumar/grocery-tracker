@@ -245,15 +245,15 @@
         // HARDCODED SUPABASE CONFIGURATION
         // Replace these with your actual credentials
         // ==========================================
-        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';  // TODO: Replace with your URL
-        const SUPABASE_ANON_KEY = 'YOUR_ACTUAL_ANON_KEY_HERE';       // TODO: Replace with your anon key
+        const SUPABASE_URL = 'https://qgnmyqayxylfacrnhxiw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnbm15cWF5eHlsZmFjcm5oeGl3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMDgxMjcsImV4cCI6MjA5Mzg4NDEyN30.emW2ijd4y7VLwdI0phDphtm7tvHzz1p9TcisWcBl7mk';
         
         // Alternative: Use localStorage if you want to keep it dynamic
         const supabaseUrl = localStorage.getItem('supabase_url') || SUPABASE_URL;
         const supabaseKey = localStorage.getItem('supabase_key') || SUPABASE_ANON_KEY;
         
         // Show config section only if credentials not available
-        if (supabaseUrl && supabaseKey && supabaseUrl !== 'https://YOUR_PROJECT_ID.supabase.co') {
+        if (supabaseUrl && supabaseKey) {
             document.getElementById('configSection').style.display = 'none';
         }
         
@@ -292,7 +292,7 @@
             const finalUrl = localStorage.getItem('supabase_url') || SUPABASE_URL;
             const finalKey = localStorage.getItem('supabase_key') || SUPABASE_ANON_KEY;
             
-            if (!finalUrl || finalUrl === 'https://YOUR_PROJECT_ID.supabase.co' || !finalKey || finalKey === 'YOUR_ACTUAL_ANON_KEY_HERE') {
+            if (!finalUrl || !finalKey) {
                 document.getElementById('configSection').style.display = 'block';
                 showMessage('⚠️ Please configure Supabase first', 'error');
                 return;
