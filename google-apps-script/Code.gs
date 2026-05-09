@@ -1,10 +1,11 @@
 function doPost(e) {
   try {
-    var data = JSON.parse(e.postData.contents);
+    // Handle form-encoded data (from HTML form)
+    var params = e.parameter;
     
-    var saleAmount = data.sale_amount || '';
-    var expenseName = data.expense_name || '';
-    var expenseAmount = data.expense_amount || '';
+    var saleAmount = params.sale_amount || '';
+    var expenseName = params.expense_name || '';
+    var expenseAmount = params.expense_amount || '';
     var timestamp = new Date();
     
     // Get or create spreadsheet
@@ -14,24 +15,21 @@ function doPost(e) {
     // Append row
     sheet.appendRow([timestamp, saleAmount, expenseName, expenseAmount]);
     
-    return ContentService.createTextOutput(JSON.stringify({
-      success: true,
-      message: 'Data saved successfully!'
-    })).setMimeType(ContentService.MimeType.JSON);
+    // Return HTML response for form submission
+    return HtmlService.createHtmlOutput('<!DOCTYPE html><html><head><script>window.location.href = "https://SivaAshokKumar.github.io/grocery-tracker/?success=true";</script></head><body>Saving...</body></html>');
     
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false,
-      message: 'Error: ' + error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+    return HtmlService.createHtmlOutput('<!DOCTYPE html><html><head><script>window.location.href = "https://SivaAshokKumar.github.io/grocery-tracker/?error=' + encodeURIComponent(error.toString()) + '";</script></head><body>Error...</body></html>');
   }
 }
 
 function doGet(e) {
-  return ContentService.createTextOutput(JSON.stringify({
+  var output = ContentService.createTextOutput(JSON.stringify({
     status: 'healthy',
     message: 'Grocery Tracker API is running'
   })).setMimeType(ContentService.MimeType.JSON);
+  
+  return output;
 }
 
 function getOrCreateSpreadsheet(name) {

@@ -7,60 +7,67 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 20px;
+            padding: 15px;
         }
         .container {
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 450px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            padding: 35px 30px;
+            box-shadow: 0 25px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.1);
+            max-width: 420px;
             width: 100%;
+            border: 1px solid rgba(255,255,255,0.2);
         }
         h1 {
-            color: #333;
+            color: #1a1a2e;
             text-align: center;
-            margin-bottom: 10px;
-            font-size: 28px;
+            margin-bottom: 8px;
+            font-size: 26px;
+            font-weight: 700;
         }
         .subtitle {
             text-align: center;
             color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
+            margin-bottom: 25px;
+            font-size: 13px;
+            font-weight: 500;
         }
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
         label {
             display: block;
-            margin-bottom: 8px;
-            color: #555;
+            margin-bottom: 6px;
+            color: #444;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
         }
         input[type="text"], input[type="number"] {
             width: 100%;
-            padding: 14px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
+            padding: 14px 16px;
+            border: 2px solid #e8e8e8;
+            border-radius: 12px;
             font-size: 16px;
             transition: all 0.3s ease;
+            background: #fafafa;
         }
         input:focus {
             outline: none;
             border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
         }
         .optional {
             color: #999;
-            font-weight: normal;
-            font-size: 12px;
+            font-weight: 400;
+            font-size: 11px;
         }
         button {
             width: 100%;
@@ -68,15 +75,17 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            border-radius: 10px;
-            font-size: 18px;
+            border-radius: 12px;
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            transition: all 0.3s ease;
+            margin-top: 8px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
         button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
         }
         button:active {
             transform: translateY(0);
@@ -88,47 +97,88 @@
             box-shadow: none;
         }
         .message {
-            margin-top: 20px;
-            padding: 12px;
-            border-radius: 8px;
+            margin-top: 18px;
+            padding: 14px;
+            border-radius: 10px;
             text-align: center;
             display: none;
             font-size: 14px;
+            font-weight: 500;
         }
         .message.success {
-            background: #d4edda;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
             color: #155724;
             display: block;
+            border: 1px solid #b1dfbb;
         }
         .message.error {
-            background: #f8d7da;
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
             color: #721c24;
             display: block;
+            border: 1px solid #f1b0b7;
         }
-        .message.info {
-            background: #e3f2fd;
-            color: #1565c0;
-            display: block;
-        }
-        .note {
+        .info-box {
             margin-top: 20px;
-            padding: 12px;
-            background: #fff3e0;
-            border-radius: 8px;
-            font-size: 13px;
-            color: #e65100;
+            padding: 16px;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border-radius: 12px;
+            font-size: 12px;
+            color: #1565c0;
             text-align: center;
+            border: 1px solid #90caf9;
         }
-        .view-data-link {
+        .info-box strong {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+        .info-box small {
+            display: block;
+            margin-top: 8px;
+            opacity: 0.8;
+        }
+        .view-data-btn {
             display: block;
             text-align: center;
             margin-top: 15px;
+            padding: 12px;
+            background: white;
             color: #667eea;
             text-decoration: none;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 10px;
+            border: 2px solid #667eea;
+            transition: all 0.3s ease;
         }
-        .view-data-link:hover {
-            text-decoration: underline;
+        .view-data-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        /* Mobile Responsive */
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 25px 20px;
+                border-radius: 20px;
+            }
+            h1 {
+                font-size: 22px;
+            }
+            .subtitle {
+                font-size: 12px;
+            }
+            input[type="text"], input[type="number"] {
+                padding: 12px 14px;
+                font-size: 16px; /* Prevents zoom on iOS */
+            }
+            button {
+                padding: 14px;
+                font-size: 15px;
+            }
         }
     </style>
 </head>
@@ -137,7 +187,7 @@
         <h1>🛒 Grocery Shop Tracker</h1>
         <p class="subtitle">Sales & Expense Management System</p>
         
-        <form id="trackerForm">
+        <form id="trackerForm" action="https://script.google.com/macros/s/AKfycbzQSJgWuPlvYQAf9EMX-TtZqz9dk94YBSnse6PhnW3gktVL7XFyhJy-KEoysb3DsqkL/exec" method="POST">
             <div class="form-group">
                 <label for="sale_amount">Sale Amount <span class="optional">(optional)</span></label>
                 <input type="number" id="sale_amount" name="sale_amount" step="0.01" placeholder="Enter sale amount">
@@ -153,69 +203,43 @@
                 <input type="number" id="expense_amount" name="expense_amount" step="0.01" placeholder="Enter expense amount">
             </div>
             
-            <button type="submit" id="submitBtn">Save to Google Sheets</button>
+            <button type="submit" id="submitBtn">💾 Save to Google Sheets</button>
         </form>
         
         <div id="message" class="message"></div>
         
-        <div class="note">
-            <strong>How to view your data:</strong><br>
-            1. Go to <a href="https://docs.google.com/spreadsheets" target="_blank">Google Sheets</a><br>
-            2. Look for "Grocery Tracker" spreadsheet<br>
-            3. All submissions are saved there automatically!<br>
+        <div class="info-box">
+            <strong>📊 Where to find your data</strong>
+            All entries are saved to your Google Sheets<br>
+            Look for "Grocery Tracker" spreadsheet
             <small>All fields are optional - fill any combination</small>
         </div>
-        <a href="https://docs.google.com/spreadsheets" target="_blank" class="view-data-link">📊 Open Google Sheets</a>
+        <a href="https://docs.google.com/spreadsheets" target="_blank" class="view-data-btn">Open Google Sheets</a>
     </div>
 
     <script>
-        // Hardcoded Google Apps Script URL
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzQSJgWuPlvYQAf9EMX-TtZqz9dk94YBSnse6PhnW3gktVL7XFyhJy-KEoysb3DsqkL/exec';
-
-        document.getElementById('trackerForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const messageDiv = document.getElementById('message');
+        // Check for success/error from URL parameters (after form submission redirects back)
+        const urlParams = new URLSearchParams(window.location.search);
+        const messageDiv = document.getElementById('message');
+        
+        if (urlParams.get('success') === 'true') {
+            messageDiv.className = 'message success';
+            messageDiv.textContent = '✅ Data saved successfully to Google Sheets!';
+            // Clear URL parameters
+            window.history.replaceState({}, document.title, window.location.pathname);
+            // Clear form
+            document.getElementById('trackerForm').reset();
+        } else if (urlParams.get('error')) {
+            messageDiv.className = 'message error';
+            messageDiv.textContent = '❌ Error: ' + decodeURIComponent(urlParams.get('error'));
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        
+        // Show loading state on form submit
+        document.getElementById('trackerForm').addEventListener('submit', function() {
             const submitBtn = document.getElementById('submitBtn');
-            
-            messageDiv.className = 'message';
-            messageDiv.textContent = '';
-            
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Saving...';
-            
-            const data = {
-                sale_amount: document.getElementById('sale_amount').value,
-                expense_name: document.getElementById('expense_name').value,
-                expense_amount: document.getElementById('expense_amount').value
-            };
-            
-            try {
-                const response = await fetch(APPS_SCRIPT_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    messageDiv.className = 'message success';
-                    messageDiv.textContent = result.message;
-                    document.getElementById('trackerForm').reset();
-                } else {
-                    messageDiv.className = 'message error';
-                    messageDiv.textContent = result.message || 'Error saving data';
-                }
-            } catch (error) {
-                messageDiv.className = 'message error';
-                messageDiv.textContent = 'Error: ' + error.message + '. Make sure the Apps Script is deployed and accessible.';
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Save to Google Sheets';
-            }
+            submitBtn.textContent = '⏳ Saving... Please wait';
         });
     </script>
 </body>
