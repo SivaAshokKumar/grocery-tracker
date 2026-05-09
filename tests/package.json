@@ -1,0 +1,30 @@
+{
+  "name": "amrs-shop-tracker-tests",
+  "version": "1.0.0",
+  "description": "Playwright E2E Tests for AMRS Shop Tracker",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:headed": "playwright test --headed",
+    "test:chrome": "playwright test --project=chromium",
+    "test:firefox": "playwright test --project=firefox",
+    "test:webkit": "playwright test --project=webkit",
+    "test:mobile": "playwright test --project='Mobile Chrome' --project='Mobile Safari'",
+    "report": "playwright show-report",
+    "install:playwright": "playwright install"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "playwright": "^1.40.0"
+  },
+  "keywords": [
+    "playwright",
+    "e2e",
+    "testing",
+    "automation",
+    "amrs-shop-tracker"
+  ],
+  "author": "QA Engineer",
+  "license": "MIT"
+}
