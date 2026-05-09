@@ -326,12 +326,28 @@
     <script>
         let allData = [];
         
+        // ==========================================
+        // HARDCODED SUPABASE CONFIGURATION
+        // Replace these with your actual credentials
+        // ==========================================
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';  // TODO: Replace with your URL
+        const SUPABASE_ANON_KEY = 'YOUR_ACTUAL_ANON_KEY_HERE';       // TODO: Replace with your anon key
+        
+        // Helper function to get credentials (hardcoded or from localStorage)
+        function getCredentials() {
+            return {
+                url: localStorage.getItem('supabase_url') || SUPABASE_URL,
+                key: localStorage.getItem('supabase_key') || SUPABASE_ANON_KEY
+            };
+        }
+        
         // Load saved configuration
         document.getElementById('supabaseUrl').value = localStorage.getItem('supabase_url') || '';
         document.getElementById('supabaseKey').value = localStorage.getItem('supabase_key') || '';
         
-        // Check if configured
-        if (localStorage.getItem('supabase_url') && localStorage.getItem('supabase_key')) {
+        // Check if configured (either hardcoded or in localStorage)
+        const creds = getCredentials();
+        if (creds.url && creds.key && creds.url !== 'https://YOUR_PROJECT_ID.supabase.co') {
             document.getElementById('configSection').style.display = 'none';
             document.getElementById('statsContainer').style.display = 'block';
             loadData();
@@ -365,10 +381,9 @@
         }
         
         async function loadData() {
-            const supabaseUrl = localStorage.getItem('supabase_url');
-            const supabaseKey = localStorage.getItem('supabase_key');
+            const { url: supabaseUrl, key: supabaseKey } = getCredentials();
             
-            if (!supabaseUrl || !supabaseKey) {
+            if (!supabaseUrl || supabaseUrl === 'https://YOUR_PROJECT_ID.supabase.co' || !supabaseKey || supabaseKey === 'YOUR_ACTUAL_ANON_KEY_HERE') {
                 document.getElementById('configSection').style.display = 'block';
                 document.getElementById('statsContainer').style.display = 'none';
                 return;
@@ -482,8 +497,7 @@
         async function deleteRow(id) {
             if (!confirm('Are you sure you want to delete this transaction?')) return;
             
-            const supabaseUrl = localStorage.getItem('supabase_url');
-            const supabaseKey = localStorage.getItem('supabase_key');
+            const { url: supabaseUrl, key: supabaseKey } = getCredentials();
             
             try {
                 const response = await fetch(`${supabaseUrl}/rest/v1/transactions?id=eq.${id}`, {
@@ -568,8 +582,7 @@
             if (!confirm('⚠️ WARNING: This will delete ALL transactions!\n\nAre you sure?')) return;
             if (!confirm('Really sure? This cannot be undone!')) return;
             
-            const supabaseUrl = localStorage.getItem('supabase_url');
-            const supabaseKey = localStorage.getItem('supabase_key');
+            const { url: supabaseUrl, key: supabaseKey } = getCredentials();
             
             try {
                 const response = await fetch(`${supabaseUrl}/rest/v1/transactions`, {

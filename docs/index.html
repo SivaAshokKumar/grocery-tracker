@@ -241,12 +241,19 @@
     </div>
 
     <script>
-        // Load saved configuration
-        document.getElementById('supabaseUrl').value = localStorage.getItem('supabase_url') || '';
-        document.getElementById('supabaseKey').value = localStorage.getItem('supabase_key') || '';
+        // ==========================================
+        // HARDCODED SUPABASE CONFIGURATION
+        // Replace these with your actual credentials
+        // ==========================================
+        const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';  // TODO: Replace with your URL
+        const SUPABASE_ANON_KEY = 'YOUR_ACTUAL_ANON_KEY_HERE';       // TODO: Replace with your anon key
         
-        // Hide config if already saved
-        if (localStorage.getItem('supabase_url') && localStorage.getItem('supabase_key')) {
+        // Alternative: Use localStorage if you want to keep it dynamic
+        const supabaseUrl = localStorage.getItem('supabase_url') || SUPABASE_URL;
+        const supabaseKey = localStorage.getItem('supabase_key') || SUPABASE_ANON_KEY;
+        
+        // Show config section only if credentials not available
+        if (supabaseUrl && supabaseKey && supabaseUrl !== 'https://YOUR_PROJECT_ID.supabase.co') {
             document.getElementById('configSection').style.display = 'none';
         }
         
@@ -263,6 +270,7 @@
             localStorage.setItem('supabase_key', key);
             document.getElementById('configSection').style.display = 'none';
             showMessage('✅ Configuration saved!', 'success');
+            location.reload(); // Reload to use new credentials
         }
         
         function showMessage(text, type) {
@@ -279,10 +287,12 @@
             e.preventDefault();
             
             const submitBtn = document.getElementById('submitBtn');
-            const supabaseUrl = localStorage.getItem('supabase_url');
-            const supabaseKey = localStorage.getItem('supabase_key');
             
-            if (!supabaseUrl || !supabaseKey) {
+            // Check if credentials are available
+            const finalUrl = localStorage.getItem('supabase_url') || SUPABASE_URL;
+            const finalKey = localStorage.getItem('supabase_key') || SUPABASE_ANON_KEY;
+            
+            if (!finalUrl || finalUrl === 'https://YOUR_PROJECT_ID.supabase.co' || !finalKey || finalKey === 'YOUR_ACTUAL_ANON_KEY_HERE') {
                 document.getElementById('configSection').style.display = 'block';
                 showMessage('⚠️ Please configure Supabase first', 'error');
                 return;
@@ -298,11 +308,11 @@
             };
             
             try {
-                const response = await fetch(`${supabaseUrl}/rest/v1/transactions`, {
+                const response = await fetch(`${finalUrl}/rest/v1/transactions`, {
                     method: 'POST',
                     headers: {
-                        'apikey': supabaseKey,
-                        'Authorization': `Bearer ${supabaseKey}`,
+                        'apikey': finalKey,
+                        'Authorization': `Bearer ${finalKey}`,
                         'Content-Type': 'application/json',
                         'Prefer': 'return=minimal'
                     },
