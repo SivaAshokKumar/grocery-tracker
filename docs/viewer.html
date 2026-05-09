@@ -268,6 +268,7 @@
         <div class="nav-links">
             <a href="index.html">📥 Entry</a>
             <a href="viewer.html" class="active">📊 View Data</a>
+            <a href="recycle-bin.html">🗑️ Recycle Bin</a>
         </div>
         
         <div class="config-section" id="configSection">
@@ -495,12 +496,61 @@
         }
         
         async function deleteRow(id) {
-            if (!confirm('Are you sure you want to delete this transaction?')) return;
+            if (!confirm('Are you sure you want to delete this transaction?\n\nIt will be moved to Recycle Bin.')) return;
             
             const { url: supabaseUrl, key: supabaseKey } = getCredentials();
             
             try {
-                const response = await fetch(`${supabaseUrl}/rest/v1/transactions?id=eq.${id}`, {
+                // Step 1: Get the row data before deleting
+                const getResponse = await fetch(`${supabaseUrl}/rest/v1/transactions?id=eq.${id}`, {
+                    method: 'GET',
+                    headers: {
+                        'apikey': supabaseKey,
+                        'Authorization': `Bearer ${supabaseKey}`
+                    }
+                });
+                
+                if (!getResponse.ok) {
+                    showMessage('❌ Error fetching transaction data', 'error');
+                    return;
+                }
+                
+                const rowData = await getResponse.json();
+                if (rowData.length === 0) {
+                    showMessage('❌ Transaction not found', 'error');
+                    return;
+                }
+                
+                const row = rowData[0];
+                
+                // Step 2: Copy to recycle_bin table
+                const recycleData = {
+                    original_id: row.id,
+                    created_at: row.created_at,
+                    deleted_at: new Date().toISOString(),
+                    sale_amount: row.sale_amount,
+                    expense_name: row.expense_name,
+                    expense_amount: row.expense_amount
+                };
+                
+                const recycleResponse = await fetch(`${supabaseUrl}/rest/v1/recycle_bin`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': supabaseKey,
+                        'Authorization': `Bearer ${supabaseKey}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify(recycleData)
+                });
+                
+                if (!recycleResponse.ok) {
+                    showMessage('❌ Error moving to recycle bin', 'error');
+                    return;
+                }
+                
+                // Step 3: Delete from transactions table
+                const deleteResponse = await fetch(`${supabaseUrl}/rest/v1/transactions?id=eq.${id}`, {
                     method: 'DELETE',
                     headers: {
                         'apikey': supabaseKey,
@@ -508,8 +558,8 @@
                     }
                 });
                 
-                if (response.ok) {
-                    showMessage('✅ Transaction deleted!', 'success');
+                if (deleteResponse.ok) {
+                    showMessage('✅ Transaction moved to Recycle Bin!', 'success');
                     loadData();
                 } else {
                     showMessage('❌ Error deleting transaction', 'error');
