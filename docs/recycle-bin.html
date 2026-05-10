@@ -455,25 +455,82 @@
         }
         
         async function permanentDelete(id) {
-            if (!confirm('⚠️ WARNING: This will PERMANENTLY delete this transaction.\n\nThis cannot be undone!')) return;
-            if (!confirm('Really sure? This is permanent!')) return;
+            if (!confirm('⚠️ This will move this transaction to ROOT BACKUP and hide from view.\n\n✅ Data will be preserved forever!')) return;
+            if (!confirm('Really sure? Data will be backed up to root_backup table and hidden here.')) return;
             
             try {
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin?id=eq.${id}`, {
-                    method: 'DELETE',
+                // Step 1: Get the record from recycle_bin
+                const getResponse = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin?id=eq.${id}`, {
+                    method: 'GET',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                     }
                 });
                 
-                if (response.ok) {
-                    showMessage('✅ Transaction permanently deleted', 'success');
+                if (!getResponse.ok) {
+                    showMessage('❌ Error fetching record', 'error');
+                    return;
+                }
+                
+                const records = await getResponse.json();
+                if (records.length === 0) {
+                    showMessage('❌ Record not found', 'error');
+                    return;
+                }
+                
+                const record = records[0];
+                
+                // Step 2: Copy to root_backup (permanent archive)
+                const backupData = {
+                    original_id: record.original_id,
+                    created_at: record.created_at,
+                    deleted_at: record.deleted_at,
+                    sale_amount: record.sale_amount,
+                    expense_name: record.expense_name,
+                    expense_amount: record.expense_amount
+                };
+                
+                const backupResponse = await fetch(`${SUPABASE_URL}/rest/v1/root_backup`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify(backupData)
+                });
+                
+                if (!backupResponse.ok) {
+                    const errText = await backupResponse.text();
+                    console.error('Backup to root_backup failed:', errText);
+                    showMessage('❌ Error backing up to root_backup', 'error');
+                    return;
+                }
+                
+                // Step 3: Hide from recycle_bin view (soft delete)
+                const hideResponse = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin?id=eq.${id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify({ is_hidden: true })
+                });
+                
+                if (hideResponse.ok) {
+                    showMessage('✅ Transaction backed up to ROOT BACKUP and hidden from view!', 'success');
                     loadDeletedData();
                 } else {
-                    showMessage('❌ Error deleting transaction', 'error');
+                    const errText = await hideResponse.text();
+                    console.error('Hide error:', errText);
+                    showMessage('❌ Error hiding from recycle bin', 'error');
                 }
             } catch (error) {
+                console.error('Permanent delete error:', error);
                 showMessage('❌ Error: ' + error.message, 'error');
             }
         }
@@ -488,8 +545,8 @@
             if (!confirm('Really sure? Items will be hidden from view but kept safely in the database.')) return;
             
             try {
-                // Get all visible (non-hidden) recycle bin items
-                const getResponse = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin?is_hidden=eq.false&select=id`, {
+                // Step 1: Get all visible (non-hidden) recycle bin items with full data
+                const getResponse = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin?is_hidden=eq.false&select=*`, {
                     method: 'GET',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
@@ -499,27 +556,61 @@
                 
                 if (!getResponse.ok) {
                     const errorText = await getResponse.text();
-                    console.error('Empty Recycle Bin - Get IDs Error:', getResponse.status, errorText);
+                    console.error('Empty Recycle Bin - Get Data Error:', getResponse.status, errorText);
                     showMessage('❌ Error fetching recycle bin data: ' + errorText, 'error');
                     return;
                 }
                 
-                const allIds = await getResponse.json();
-                console.log('Found', allIds.length, 'items to hide');
+                const allRecords = await getResponse.json();
+                console.log('Found', allRecords.length, 'items to backup and hide');
                 
-                if (allIds.length === 0) {
+                if (allRecords.length === 0) {
                     showMessage('✅ Recycle bin is empty!', 'success');
                     loadDeletedData();
                     return;
                 }
                 
-                // Soft delete - mark each as hidden (data stays in DB forever)
+                // Step 2: Copy each record to root_backup (permanent archive)
+                let backedUp = 0;
+                for (const record of allRecords) {
+                    try {
+                        const backupData = {
+                            original_id: record.original_id,
+                            created_at: record.created_at,
+                            deleted_at: record.deleted_at,
+                            sale_amount: record.sale_amount,
+                            expense_name: record.expense_name,
+                            expense_amount: record.expense_amount
+                        };
+                        
+                        const backupResponse = await fetch(`${SUPABASE_URL}/rest/v1/root_backup`, {
+                            method: 'POST',
+                            headers: {
+                                'apikey': SUPABASE_ANON_KEY,
+                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=minimal'
+                            },
+                            body: JSON.stringify(backupData)
+                        });
+                        
+                        if (backupResponse.ok) {
+                            backedUp++;
+                        } else {
+                            console.error('Failed to backup to root_backup:', record.id, await backupResponse.text());
+                        }
+                    } catch (e) {
+                        console.error('Exception backing up to root_backup:', record.id, e);
+                    }
+                }
+                
+                // Step 3: Hide each record from recycle_bin view (soft delete)
                 let hidden = 0;
                 let failed = 0;
                 
-                for (const row of allIds) {
+                for (const record of allRecords) {
                     try {
-                        const hideResponse = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin?id=eq.${row.id}`, {
+                        const hideResponse = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin?id=eq.${record.id}`, {
                             method: 'PATCH',
                             headers: {
                                 'apikey': SUPABASE_ANON_KEY,
@@ -535,22 +626,22 @@
                         } else {
                             failed++;
                             const errText = await hideResponse.text();
-                            console.error('Failed to hide recycle item:', row.id, hideResponse.status, errText);
+                            console.error('Failed to hide recycle item:', record.id, hideResponse.status, errText);
                         }
                     } catch (e) {
                         failed++;
-                        console.error('Exception hiding recycle item:', row.id, e);
+                        console.error('Exception hiding recycle item:', record.id, e);
                     }
                 }
                 
-                console.log('Hide results - Success:', hidden, 'Failed:', failed);
+                console.log('Results - Backed up to root_backup:', backedUp, 'Hidden from view:', hidden, 'Failed:', failed);
                 
                 if (failed === 0) {
-                    showMessage(`✅ Recycle bin cleared from view! ${hidden} items hidden (data preserved in Supabase).`, 'success');
+                    showMessage(`✅ Recycle bin processed! ${backedUp} backed up to ROOT BACKUP, ${hidden} hidden from view.`, 'success');
                 } else if (hidden > 0) {
-                    showMessage(`⚠️ Hidden ${hidden} items, ${failed} failed. Check console for details.`, 'error');
+                    showMessage(`⚠️ Backed up ${backedUp}, hidden ${hidden}, failed ${failed}. Check console.`, 'error');
                 } else {
-                    showMessage(`❌ Failed to hide recycle bin items. ${failed} items failed. Check console.`, 'error');
+                    showMessage(`❌ Failed to process recycle bin. ${failed} items failed. Check console.`, 'error');
                 }
                 
                 loadDeletedData();
