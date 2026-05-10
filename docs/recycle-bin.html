@@ -279,7 +279,8 @@
             document.getElementById('tableContent').innerHTML = '<div class="loading">Loading deleted items...</div>';
             
             try {
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin?order=deleted_at.desc`, {
+                // Only show non-hidden (visible) recycle bin items - soft delete pattern
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin?is_hidden=eq.false&order=deleted_at.desc`, {
                     method: 'GET',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
@@ -292,7 +293,9 @@
                     displayDeletedData(deletedData);
                     document.getElementById('deletedCount').textContent = deletedData.length;
                 } else {
-                    document.getElementById('tableContent').innerHTML = '<div class="no-data">❌ Error loading recycle bin</div>';
+                    const errorText = await response.text();
+                    console.error('Recycle bin load error:', errorText);
+                    document.getElementById('tableContent').innerHTML = `<div class="no-data">❌ Error loading recycle bin: ${errorText}</div>`;
                 }
             } catch (error) {
                 document.getElementById('tableContent').innerHTML = `<div class="no-data">❌ Error: ${error.message}</div>`;
@@ -375,20 +378,25 @@
                     return;
                 }
                 
-                // Step 2: Remove from recycle_bin
-                const deleteResponse = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin?id=eq.${id}`, {
-                    method: 'DELETE',
+                // Step 2: Soft delete - mark as hidden in recycle_bin (data preserved in DB)
+                const hideResponse = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin?id=eq.${id}`, {
+                    method: 'PATCH',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                    }
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
+                    },
+                    body: JSON.stringify({ is_hidden: true })
                 });
                 
-                if (deleteResponse.ok) {
-                    showMessage('✅ Transaction restored successfully!', 'success');
+                if (hideResponse.ok) {
+                    showMessage('✅ Transaction restored successfully! (Hidden from Recycle Bin view)', 'success');
                     loadDeletedData();
                 } else {
-                    showMessage('❌ Error removing from recycle bin', 'error');
+                    const errText = await hideResponse.text();
+                    console.error('Hide from recycle bin error:', errText);
+                    showMessage('❌ Error hiding from recycle bin: ' + errText, 'error');
                 }
             } catch (error) {
                 showMessage('❌ Error: ' + error.message, 'error');
@@ -476,25 +484,78 @@
                 return;
             }
             
-            if (!confirm(`⚠️ WARNING: This will PERMANENTLY delete ALL ${deletedData.length} transactions in recycle bin.\n\nThis cannot be undone!`)) return;
-            if (!confirm('Really sure? All data will be lost forever!')) return;
+            if (!confirm(`⚠️ This will HIDE ALL ${deletedData.length} transactions from the Recycle Bin view.\n\n✅ Data will be PRESERVED in Supabase database forever.\n❌ Data will be HIDDEN from this page only.\n\nContinue?`)) return;
+            if (!confirm('Really sure? Items will be hidden from view but kept safely in the database.')) return;
             
             try {
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin`, {
-                    method: 'DELETE',
+                // Get all visible (non-hidden) recycle bin items
+                const getResponse = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin?is_hidden=eq.false&select=id`, {
+                    method: 'GET',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                     }
                 });
                 
-                if (response.ok) {
-                    showMessage('✅ Recycle bin emptied successfully', 'success');
-                    loadDeletedData();
-                } else {
-                    showMessage('❌ Error emptying recycle bin', 'error');
+                if (!getResponse.ok) {
+                    const errorText = await getResponse.text();
+                    console.error('Empty Recycle Bin - Get IDs Error:', getResponse.status, errorText);
+                    showMessage('❌ Error fetching recycle bin data: ' + errorText, 'error');
+                    return;
                 }
+                
+                const allIds = await getResponse.json();
+                console.log('Found', allIds.length, 'items to hide');
+                
+                if (allIds.length === 0) {
+                    showMessage('✅ Recycle bin is empty!', 'success');
+                    loadDeletedData();
+                    return;
+                }
+                
+                // Soft delete - mark each as hidden (data stays in DB forever)
+                let hidden = 0;
+                let failed = 0;
+                
+                for (const row of allIds) {
+                    try {
+                        const hideResponse = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin?id=eq.${row.id}`, {
+                            method: 'PATCH',
+                            headers: {
+                                'apikey': SUPABASE_ANON_KEY,
+                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                'Content-Type': 'application/json',
+                                'Prefer': 'return=minimal'
+                            },
+                            body: JSON.stringify({ is_hidden: true })
+                        });
+                        
+                        if (hideResponse.ok) {
+                            hidden++;
+                        } else {
+                            failed++;
+                            const errText = await hideResponse.text();
+                            console.error('Failed to hide recycle item:', row.id, hideResponse.status, errText);
+                        }
+                    } catch (e) {
+                        failed++;
+                        console.error('Exception hiding recycle item:', row.id, e);
+                    }
+                }
+                
+                console.log('Hide results - Success:', hidden, 'Failed:', failed);
+                
+                if (failed === 0) {
+                    showMessage(`✅ Recycle bin cleared from view! ${hidden} items hidden (data preserved in Supabase).`, 'success');
+                } else if (hidden > 0) {
+                    showMessage(`⚠️ Hidden ${hidden} items, ${failed} failed. Check console for details.`, 'error');
+                } else {
+                    showMessage(`❌ Failed to hide recycle bin items. ${failed} items failed. Check console.`, 'error');
+                }
+                
+                loadDeletedData();
             } catch (error) {
+                console.error('Empty Recycle Bin Error:', error);
                 showMessage('❌ Error: ' + error.message, 'error');
             }
         }
