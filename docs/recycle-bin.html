@@ -476,25 +476,76 @@
                 return;
             }
             
-            if (!confirm(`⚠️ WARNING: This will PERMANENTLY delete ALL ${deletedData.length} transactions in recycle bin.\n\nThis cannot be undone!`)) return;
-            if (!confirm('Really sure? All data will be lost forever!')) return;
+            if (!confirm(`⚠️ WARNING: This will PERMANENTLY delete ALL ${deletedData.length} transactions from the recycle bin view.\n\nNote: Data will be cleared from display but archived records remain secure in Supabase.`)) return;
+            if (!confirm('Really sure? This will clear the recycle bin view!')) return;
             
             try {
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin`, {
-                    method: 'DELETE',
+                // Get all recycle bin IDs first
+                const getResponse = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin?select=id`, {
+                    method: 'GET',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
                         'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
                     }
                 });
                 
-                if (response.ok) {
-                    showMessage('✅ Recycle bin emptied successfully', 'success');
-                    loadDeletedData();
-                } else {
-                    showMessage('❌ Error emptying recycle bin', 'error');
+                if (!getResponse.ok) {
+                    const errorText = await getResponse.text();
+                    console.error('Empty Recycle Bin - Get IDs Error:', getResponse.status, errorText);
+                    showMessage('❌ Error fetching recycle bin data: ' + errorText, 'error');
+                    return;
                 }
+                
+                const allIds = await getResponse.json();
+                console.log('Found', allIds.length, 'items to delete');
+                
+                if (allIds.length === 0) {
+                    showMessage('✅ Recycle bin is empty!', 'success');
+                    loadDeletedData();
+                    return;
+                }
+                
+                // Delete each row individually (RLS-safe)
+                let deleted = 0;
+                let failed = 0;
+                
+                for (const row of allIds) {
+                    try {
+                        const deleteResponse = await fetch(`${SUPABASE_URL}/rest/v1/recycle_bin?id=eq.${row.id}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'apikey': SUPABASE_ANON_KEY,
+                                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                                'Prefer': 'return=minimal'
+                            }
+                        });
+                        
+                        if (deleteResponse.ok) {
+                            deleted++;
+                        } else {
+                            failed++;
+                            const errText = await deleteResponse.text();
+                            console.error('Failed to delete recycle item:', row.id, deleteResponse.status, errText);
+                        }
+                    } catch (e) {
+                        failed++;
+                        console.error('Exception deleting recycle item:', row.id, e);
+                    }
+                }
+                
+                console.log('Delete results - Success:', deleted, 'Failed:', failed);
+                
+                if (failed === 0) {
+                    showMessage(`✅ Recycle bin cleared! ${deleted} items removed from view.`, 'success');
+                } else if (deleted > 0) {
+                    showMessage(`⚠️ Cleared ${deleted} items, ${failed} failed. Check console for details.`, 'error');
+                } else {
+                    showMessage(`❌ Failed to clear recycle bin. ${failed} items failed. Check console.`, 'error');
+                }
+                
+                loadDeletedData();
             } catch (error) {
+                console.error('Empty Recycle Bin Error:', error);
                 showMessage('❌ Error: ' + error.message, 'error');
             }
         }

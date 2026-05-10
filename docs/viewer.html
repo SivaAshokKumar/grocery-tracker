@@ -634,21 +634,65 @@
             const { url: supabaseUrl, key: supabaseKey } = getCredentials();
             
             try {
-                const response = await fetch(`${supabaseUrl}/rest/v1/transactions`, {
-                    method: 'DELETE',
+                // First, get all transaction IDs to delete one by one (RLS-safe approach)
+                const getResponse = await fetch(`${supabaseUrl}/rest/v1/transactions?select=id`, {
+                    method: 'GET',
                     headers: {
                         'apikey': supabaseKey,
                         'Authorization': `Bearer ${supabaseKey}`
                     }
                 });
                 
-                if (response.ok) {
-                    showMessage('✅ All data cleared!', 'success');
-                    loadData();
-                } else {
-                    showMessage('❌ Error clearing data', 'error');
+                if (!getResponse.ok) {
+                    const errorText = await getResponse.text();
+                    console.error('Clear All - Get IDs Error:', errorText);
+                    showMessage('❌ Error fetching data: ' + errorText, 'error');
+                    return;
                 }
+                
+                const allIds = await getResponse.json();
+                
+                if (allIds.length === 0) {
+                    showMessage('✅ No data to clear!', 'success');
+                    return;
+                }
+                
+                // Delete each row individually (works with RLS)
+                let deleted = 0;
+                let failed = 0;
+                
+                for (const row of allIds) {
+                    try {
+                        const deleteResponse = await fetch(`${supabaseUrl}/rest/v1/transactions?id=eq.${row.id}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'apikey': supabaseKey,
+                                'Authorization': `Bearer ${supabaseKey}`,
+                                'Prefer': 'return=minimal'
+                            }
+                        });
+                        
+                        if (deleteResponse.ok) {
+                            deleted++;
+                        } else {
+                            failed++;
+                            console.error('Failed to delete row:', row.id, await deleteResponse.text());
+                        }
+                    } catch (e) {
+                        failed++;
+                        console.error('Exception deleting row:', row.id, e);
+                    }
+                }
+                
+                if (failed === 0) {
+                    showMessage(`✅ All ${deleted} transactions cleared!`, 'success');
+                } else {
+                    showMessage(`⚠️ Cleared ${deleted}, failed ${failed}. Check console.`, 'error');
+                }
+                
+                loadData();
             } catch (error) {
+                console.error('Clear All Data Error:', error);
                 showMessage('❌ Error: ' + error.message, 'error');
             }
         }
