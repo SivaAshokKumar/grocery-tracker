@@ -1,0 +1,259 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: recycle-bin.spec.js >> 🗑️ Recycle Bin - Functional Tests >> TC046: Navigation to other pages
+- Location: e2e\recycle-bin.spec.js:103:3
+
+# Error details
+
+```
+Error: expect(page).toHaveURL(expected) failed
+
+Expected pattern: /grocery-tracker\/$/
+Received string:  "https://sivaashokkumar.github.io/grocery-tracker/index.html"
+Timeout: 5000ms
+
+Call log:
+  - Expect "toHaveURL" with timeout 5000ms
+    8 × unexpected value "https://sivaashokkumar.github.io/grocery-tracker/index.html"
+
+```
+
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - heading "🛒 AMRS Shop Tracker" [level=1] [ref=e3]
+  - paragraph [ref=e4]: Sales & Expense Management System
+  - generic [ref=e5]:
+    - link "📥 Entry" [ref=e6] [cursor=pointer]:
+      - /url: index.html
+    - link "📊 View Data" [ref=e7] [cursor=pointer]:
+      - /url: viewer.html
+    - link "🗑️ Recycle Bin" [ref=e8] [cursor=pointer]:
+      - /url: recycle-bin.html
+  - generic [ref=e9]:
+    - generic [ref=e10]:
+      - generic [ref=e11]: Sale Amount (optional)
+      - spinbutton "Sale Amount (optional)" [ref=e12]
+    - generic [ref=e13]:
+      - generic [ref=e14]: Expense Name (optional)
+      - textbox "Expense Name (optional)" [ref=e15]:
+        - /placeholder: Enter expense name
+    - generic [ref=e16]:
+      - generic [ref=e17]: Expense Amount (optional)
+      - spinbutton "Expense Amount (optional)" [ref=e18]
+    - button "💾 Save Transaction" [ref=e19] [cursor=pointer]
+```
+
+# Test source
+
+```ts
+  5   | 
+  6   | const { test, expect } = require('@playwright/test');
+  7   | 
+  8   | const RECYCLE_BIN_URL = '/grocery-tracker/recycle-bin.html';
+  9   | 
+  10  | test.describe('🗑️ Recycle Bin - UI/UX Tests', () => {
+  11  |   
+  12  |   test.beforeEach(async ({ page }) => {
+  13  |     await page.goto(RECYCLE_BIN_URL);
+  14  |     await page.waitForLoadState('networkidle');
+  15  |   });
+  16  | 
+  17  |   test('TC037: Verify page title and branding', async ({ page }) => {
+  18  |     await expect(page).toHaveTitle(/Recycle Bin/);
+  19  |     
+  20  |     const heading = page.locator('h1');
+  21  |     await expect(heading).toContainText('Recycle Bin');
+  22  |   });
+  23  | 
+  24  |   test('TC038: Verify deleted count card', async ({ page }) => {
+  25  |     await expect(page.locator('text=Deleted Transactions')).toBeVisible();
+  26  |     await expect(page.locator('#deletedCount')).toBeVisible();
+  27  |     
+  28  |     const count = await page.locator('#deletedCount').textContent();
+  29  |     expect(parseInt(count) >= 0).toBeTruthy();
+  30  |   });
+  31  | 
+  32  |   test('TC039: Verify action buttons present', async ({ page }) => {
+  33  |     await expect(page.locator('text=Refresh')).toBeVisible();
+  34  |     await expect(page.locator('text=Restore All')).toBeVisible();
+  35  |     await expect(page.locator('text=Empty Recycle Bin')).toBeVisible();
+  36  |   });
+  37  | 
+  38  |   test('TC040: Verify table or empty state', async ({ page }) => {
+  39  |     await page.waitForTimeout(3000);
+  40  |     
+  41  |     const tableExists = await page.locator('table').count() > 0;
+  42  |     const emptyStateExists = await page.locator('text=Recycle Bin is empty').count() > 0;
+  43  |     
+  44  |     expect(tableExists || emptyStateExists).toBeTruthy();
+  45  |   });
+  46  | 
+  47  |   test('TC041: Responsive design - Mobile', async ({ page }) => {
+  48  |     await page.setViewportSize({ width: 375, height: 667 });
+  49  |     await page.reload();
+  50  |     
+  51  |     await expect(page.locator('.container')).toBeVisible();
+  52  |     await expect(page.locator('.stats-card')).toBeVisible();
+  53  |   });
+  54  | });
+  55  | 
+  56  | test.describe('🗑️ Recycle Bin - Functional Tests', () => {
+  57  |   
+  58  |   test.beforeEach(async ({ page }) => {
+  59  |     await page.goto(RECYCLE_BIN_URL);
+  60  |     await page.waitForTimeout(3000);
+  61  |   });
+  62  | 
+  63  |   test('TC042: Refresh deleted data', async ({ page }) => {
+  64  |     await page.click('text=Refresh');
+  65  |     await page.waitForTimeout(2000);
+  66  |     
+  67  |     // Verify page didn't crash
+  68  |     await expect(page.locator('body')).toBeVisible();
+  69  |     await expect(page.locator('#tableContent')).toBeVisible();
+  70  |   });
+  71  | 
+  72  |   test('TC043: Table columns verification', async ({ page }) => {
+  73  |     const tableExists = await page.locator('table').count() > 0;
+  74  |     
+  75  |     if (tableExists) {
+  76  |       const headers = await page.locator('th').allTextContents();
+  77  |       
+  78  |       expect(headers.some(h => h.includes('#'))).toBeTruthy();
+  79  |       expect(headers.some(h => h.includes('Original Created'))).toBeTruthy();
+  80  |       expect(headers.some(h => h.includes('Deleted At'))).toBeTruthy();
+  81  |       expect(headers.some(h => h.includes('Actions'))).toBeTruthy();
+  82  |     }
+  83  |   });
+  84  | 
+  85  |   test('TC044: Restore button visibility', async ({ page }) => {
+  86  |     const tableExists = await page.locator('table').count() > 0;
+  87  |     
+  88  |     if (tableExists) {
+  89  |       const restoreButton = page.locator('button:has-text("Restore")').first();
+  90  |       await expect(restoreButton).toBeVisible();
+  91  |     }
+  92  |   });
+  93  | 
+  94  |   test('TC045: Permanent delete button visibility', async ({ page }) => {
+  95  |     const tableExists = await page.locator('table').count() > 0;
+  96  |     
+  97  |     if (tableExists) {
+  98  |       const deleteButton = page.locator('button:has-text("Delete")').first();
+  99  |       await expect(deleteButton).toBeVisible();
+  100 |     }
+  101 |   });
+  102 | 
+  103 |   test('TC046: Navigation to other pages', async ({ page }) => {
+  104 |     await page.click('text=Entry');
+> 105 |     await expect(page).toHaveURL(/grocery-tracker\/$/);
+      |                        ^ Error: expect(page).toHaveURL(expected) failed
+  106 |     
+  107 |     await page.goto(RECYCLE_BIN_URL);
+  108 |     await page.click('text=View Data');
+  109 |     await expect(page).toHaveURL(/viewer\.html/);
+  110 |   });
+  111 | });
+  112 | 
+  113 | test.describe('🗑️ Recycle Bin - Integration Tests', () => {
+  114 |   
+  115 |   test('TC047: End-to-end delete and restore flow', async ({ page }) => {
+  116 |     // Step 1: Add a transaction on entry page
+  117 |     await page.goto('/grocery-tracker/');
+  118 |     await page.waitForTimeout(2000);
+  119 |     
+  120 |     const timestamp = Date.now();
+  121 |     await page.fill('#expense_name', `Test Item ${timestamp}`);
+  122 |     await page.fill('#expense_amount', '99.99');
+  123 |     await page.click('#submitBtn');
+  124 |     
+  125 |     await page.waitForTimeout(3000);
+  126 |     
+  127 |     // Step 2: Go to viewer and verify it exists
+  128 |     await page.goto('/grocery-tracker/viewer.html');
+  129 |     await page.waitForTimeout(3000);
+  130 |     
+  131 |     // Step 3: Delete it (if found in table)
+  132 |     const rows = await page.locator('table tbody tr').count();
+  133 |     if (rows > 0) {
+  134 |       // Click delete on first row
+  135 |       await page.locator('button:has-text("Delete")').first().click();
+  136 |       
+  137 |       // Confirm deletion
+  138 |       page.on('dialog', async dialog => {
+  139 |         if (dialog.type() === 'confirm') {
+  140 |           await dialog.accept();
+  141 |         }
+  142 |       });
+  143 |       
+  144 |       await page.waitForTimeout(3000);
+  145 |       
+  146 |       // Step 4: Go to recycle bin and verify it's there
+  147 |       await page.goto(RECYCLE_BIN_URL);
+  148 |       await page.waitForTimeout(3000);
+  149 |       
+  150 |       const recycleBinCount = await page.locator('#deletedCount').textContent();
+  151 |       console.log(`Recycle bin count after deletion: ${recycleBinCount}`);
+  152 |     }
+  153 |   });
+  154 | });
+  155 | 
+  156 | test.describe('🗑️ Recycle Bin - Performance Tests', () => {
+  157 |   
+  158 |   test('TC048: Page load time', async ({ page }) => {
+  159 |     const start = Date.now();
+  160 |     await page.goto(RECYCLE_BIN_URL);
+  161 |     await page.waitForLoadState('networkidle');
+  162 |     const loadTime = Date.now() - start;
+  163 |     
+  164 |     console.log(`Recycle bin page load time: ${loadTime}ms`);
+  165 |     expect(loadTime).toBeLessThan(6000);
+  166 |   });
+  167 | 
+  168 |   test('TC049: Data loading with many items', async ({ page }) => {
+  169 |     await page.goto(RECYCLE_BIN_URL);
+  170 |     
+  171 |     const start = Date.now();
+  172 |     await page.waitForTimeout(3000);
+  173 |     const loadTime = Date.now() - start;
+  174 |     
+  175 |     console.log(`Recycle bin data load time: ${loadTime}ms`);
+  176 |     expect(loadTime).toBeLessThan(5000);
+  177 |   });
+  178 | 
+  179 |   test('TC050: No console errors', async ({ page }) => {
+  180 |     const errors = [];
+  181 |     page.on('console', msg => {
+  182 |       if (msg.type() === 'error') {
+  183 |         errors.push(msg.text());
+  184 |       }
+  185 |     });
+  186 |     
+  187 |     await page.goto(RECYCLE_BIN_URL);
+  188 |     await page.waitForTimeout(3000);
+  189 |     
+  190 |     console.log(`Console errors: ${errors.length}`);
+  191 |     errors.forEach(e => console.log(`Error: ${e}`));
+  192 |   });
+  193 | });
+  194 | 
+  195 | test.describe('🗑️ Recycle Bin - Security Tests', () => {
+  196 |   
+  197 |   test.beforeEach(async ({ page }) => {
+  198 |     await page.goto(RECYCLE_BIN_URL);
+  199 |   });
+  200 | 
+  201 |   test('TC051: Verify no sensitive data exposure', async ({ page }) => {
+  202 |     const pageContent = await page.content();
+  203 |     
+  204 |     // Should not expose raw API keys in HTML (they should be in JS only)
+  205 |     expect(pageContent).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+```
